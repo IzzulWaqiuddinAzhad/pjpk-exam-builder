@@ -1,0 +1,13 @@
+import assert from 'node:assert/strict';import {readFile,writeFile,mkdir} from 'node:fs/promises';
+import {flattenBank} from '../dist/core.mjs';import {createExamPDFs,examCode} from '../dist/pdf.mjs';
+globalThis.self=globalThis;await import('../dist/vendor/pdf-lib.min.js');
+const bank=flattenBank(JSON.parse(await readFile(new URL('../dist/assets/bank.json',import.meta.url))));const diagramItems=bank.filter(q=>q.diagram);const selected=[...diagramItems,...bank.filter(q=>!q.diagram).slice(0,50-diagramItems.length)];assert.equal(selected.length,50);
+const meta={school:'SEKOLAH MENENGAH KEBANGSAAN',title:'PEPERIKSAAN AKHIR TAHUN',year:'2026',duration:'1 jam 15 minit',teacher:'Guru PJPK',instructions:'Jawab semua soalan dengan teliti.',cover:true};
+const loadImage=async name=>new Uint8Array(await readFile(new URL('../dist/assets/Rajah_'+name+'.png',import.meta.url)));
+const result=await createExamPDFs(selected,meta,{loadImage});assert.equal(result.questionBounds.length,50);assert.ok(result.questionBounds.every(b=>b.bottom>=59));assert.equal(new Set(result.questionBounds.map(b=>b.id)).size,50);assert.equal(result.code,examCode(selected,meta));assert.notEqual(result.code,examCode([...selected].reverse(),meta));
+const paper=await PDFLib.PDFDocument.load(result.paper),scheme=await PDFLib.PDFDocument.load(result.scheme);assert.equal(paper.getPageCount(),result.paperPages);assert.equal(scheme.getPageCount(),result.schemePages);
+await mkdir(new URL('../test-output/',import.meta.url),{recursive:true});await writeFile(new URL('../test-output/PJPK_50_Kertas_Murid.pdf',import.meta.url),result.paper);await writeFile(new URL('../test-output/PJPK_50_Skema_Guru.pdf',import.meta.url),result.scheme);await writeFile(new URL('../test-output/export-report.json',import.meta.url),JSON.stringify({code:result.code,questionBounds:result.questionBounds,selected},null,2));
+const longest={...meta,school:'Sekolah Menengah Kebangsaan '.repeat(5).slice(0,110),title:'Peperiksaan Pentaksiran Akhir Tahun '.repeat(3).slice(0,100),instructions:'Sila baca semua arahan dengan teliti sebelum menjawab soalan. '.repeat(9).slice(0,500)};
+const edge=await createExamPDFs([bank[0]],longest,{loadImage});await writeFile(new URL('../test-output/Long_Cover.pdf',import.meta.url),edge.paper);
+const noCover=await createExamPDFs([bank[0]],{...longest,cover:false},{loadImage});await writeFile(new URL('../test-output/No_Cover.pdf',import.meta.url),noCover.paper);
+console.log(`PASS: 50-item PDF, ${diagramItems.length} diagrams, ${result.paperPages} paper pages, ${result.schemePages} scheme pages, matching code ${result.code}, no split question blocks.`);

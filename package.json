@@ -1,0 +1,12 @@
+{
+  "name": "pjpk-exam-builder",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "PJPK exam builder with printable student papers and teacher answer schemes",
+  "scripts": {
+    "test": "node --test tests/core.test.mjs && node tests/pdf.test.mjs && node tests/branding.test.mjs",
+    "check": "node --check dist/app.mjs && node --check dist/pdf.mjs && node --check dist/core.mjs",
+    "serve": "python3 -m http.server 8080 --directory dist"
+  }
+}
