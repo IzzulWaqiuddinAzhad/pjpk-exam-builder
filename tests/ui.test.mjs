@@ -1,0 +1,30 @@
+import assert from 'node:assert/strict';
+import {readFile} from 'node:fs/promises';
+import {Window} from 'happy-dom';
+const window=new Window({url:'https://example.test/pjpk-exam-builder/dist/',settings:{disableJavaScriptEvaluation:true,disableCSSFileLoading:true,disableJavaScriptFileLoading:true}});
+window.document.write(await readFile(new URL('../dist/index.html',import.meta.url),'utf8'));
+for(const key of ['window','document','localStorage','Event','Image'])globalThis[key]=key==='window'?window:window[key];
+const nativeFetch=globalThis.fetch;
+globalThis.fetch=async url=>{const bytes=await readFile(url);return {ok:true,json:async()=>JSON.parse(bytes.toString()),arrayBuffer:async()=>bytes.buffer.slice(bytes.byteOffset,bytes.byteOffset+bytes.byteLength)};};
+for(const el of document.querySelectorAll('dialog')){el.showModal=function(){this.open=true;};el.close=function(){this.open=false;};}
+globalThis.self=globalThis;await import('../dist/vendor/pdf-lib.min.js');
+await import('../dist/app.mjs');
+const $=id=>document.getElementById(id),change=(id,value)=>{$(id).value=value;$(id).dispatchEvent(new Event('change',{bubbles:true}));};
+assert.equal($('result-count').textContent,'60 item ditemui');assert.equal(document.querySelectorAll('.question-card').length,20);assert.equal($('form-filter').value,'2');assert.equal($('bloom-filter').value,'');assert.equal($('verified-only').checked,true);
+assert.equal(document.querySelector('[data-form="1"]'),null);
+document.querySelector('[data-form="3"]').click();assert.equal($('result-count').textContent,'60 item ditemui');assert.equal(document.querySelector('[data-form="3"]').getAttribute('aria-pressed'),'true');
+change('bloom-filter','hots');assert.ok([...document.querySelectorAll('.question-card')].every(e=>e.textContent.includes('KBAT')));
+change('bloom-filter','');$('filter-toggle').click();assert.equal($('filter-controls').hidden,true);$('filter-toggle').click();
+$('auto-open').click();assert.equal($('auto-dialog').open,true);$('auto-generate').click();assert.equal($('review-dialog').open,true);assert.equal($('mobile-count').textContent,'50 / 50');assert.equal($('low-count').textContent,'10');assert.equal($('medium-count').textContent,'30');assert.equal($('high-count').textContent,'10');
+$('review-dialog').close();$('auto-open').click();$('pct-low').value='80';$('pct-low').dispatchEvent(new Event('input'));assert.equal($('auto-generate').disabled,true);
+for(const [id,value]of [['pct-low','40'],['pct-medium','40'],['pct-high','20']]){$(id).value=value;$(id).dispatchEvent(new Event('input'));}
+$('auto-keep').checked=false;$('auto-generate').click();assert.ok($('auto-error').textContent.includes('tersedia'));assert.equal($('mobile-count').textContent,'50 / 50');$('auto-dialog').close();
+$('teacher').value='Guru Ujian';$('teacher-role').value='Jawatan rekaan pengguna';$('teacher-role').dispatchEvent(new Event('input'));assert.equal(JSON.parse(localStorage.getItem('pjpk-studio-v1')).metadata['teacher-role'],'Jawatan rekaan pengguna');
+document.querySelector('[data-evidence]').click();assert.equal($('evidence-dialog').open,true);assert.ok($('evidence-content').textContent.includes('DSKP berkaitan'));assert.ok($('evidence-content').querySelector('a img'));$('evidence-dialog').close();
+$('mobile-review').click();$('confirm-export').click();
+for(let i=0;i<200&&$('download-links').hidden;i++)await new Promise(r=>setTimeout(r,25));
+assert.equal($('download-links').hidden,false,$('export-status').textContent);assert.ok($('paper-download').download.endsWith('.pdf'));assert.ok($('scheme-download').download.endsWith('.pdf'));
+$('review-dialog').close();$('view-selected').click();document.querySelector('[data-select]').click();assert.equal($('mobile-count').textContent,'49 / 50');assert.equal($('download-links').hidden,true);
+globalThis.fetch=nativeFetch;await window.happyDOM.abort();
+console.log('PASS: DOM workflow — defaults, form/Bloom filters, auto-selection, quota failure preservation, custom roles, evidence modal, PDF links and invalidation.');
+process.exit(0);
