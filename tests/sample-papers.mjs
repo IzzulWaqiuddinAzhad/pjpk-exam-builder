@@ -1,0 +1,11 @@
+import {readFile,writeFile,mkdir} from 'node:fs/promises';
+import {flattenBank,autoSelect,orderedItems} from '../dist/core.mjs';
+import {createExamPDFs} from '../dist/pdf.mjs';
+globalThis.self=globalThis;await import('../dist/vendor/pdf-lib.min.js');
+const bank=flattenBank(JSON.parse(await readFile(new URL('../dist/assets/bank.json',import.meta.url))));
+const items=orderedItems(autoSelect(bank.filter(q=>q.form===3&&q.evidence),50,[20,60,20],[],()=>.5),bank);
+const meta={school:'CONTOH SEKOLAH',title:'CONTOH UJIAN PJPK',year:'2026',duration:'1 jam 15 minit',teacher:'Izzul Waqiuddin Azhad',teacherRole:'Guru Pendidikan Jasmani dan Pendidikan Kesihatan',reviewedBy:'Nama penyemak',reviewedRole:'Ketua Panitia PJPK',approvedBy:'Nama pengesah',approvedRole:'GKMP Kemanusiaan',cover:true,evidenceAppendix:true};
+const result=await createExamPDFs(items,meta,{loadImage:async n=>new Uint8Array(await readFile(new URL('../dist/assets/Rajah_'+n+'.png',import.meta.url))),loadEvidence:async n=>new Uint8Array(await readFile(new URL('../dist/assets/evidence/'+n,import.meta.url)))});
+await mkdir(new URL('../test-output/',import.meta.url),{recursive:true});
+for(const [name,value] of [['PJPK_T3_Contoh_Kertas_Murid.pdf',result.paper],['PJPK_T3_Contoh_Skema_Guru.pdf',result.scheme]])await writeFile(new URL('../test-output/'+name,import.meta.url),value);
+console.log(JSON.stringify({items:items.length,paperPages:result.paperPages,schemePages:result.schemePages,code:result.code}));
